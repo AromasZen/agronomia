@@ -7,8 +7,12 @@ const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 let allProducts = [];
 let currentFilter = 'all';
 
-// DOM Elements
-const productsGrid = document.getElementById('productsGrid');
+const productsTableBody = document.getElementById('productsTableBody');
+const multiSearchInputsBody = document.getElementById('multiSearchInputsBody');
+const btnAddSearchRow = document.getElementById('btnAddSearchRow');
+const btnMultiSearch = document.getElementById('btnMultiSearch');
+const multiSearchResults = document.getElementById('multiSearchResults');
+const multiSearchTableBody = document.getElementById('multiSearchTableBody');
 const loader = document.getElementById('loader');
 const emptyState = document.getElementById('emptyState');
 const categoryFilters = document.getElementById('categoryFilters');
@@ -26,6 +30,185 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchProducts();
     setupEventListeners();
 });
+
+// ==========================================
+// EXCEL-LIKE ACTIONS
+// ==========================================
+
+async function addStockPrompt(codigo) {
+    const { value: quantityStr } = await Swal.fire({
+        title: `Sumar stock`,
+        text: `Rollo: ${codigo}`,
+        input: 'number',
+        inputLabel: 'Cantidad a sumar',
+        inputPlaceholder: 'Ej: 10',
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        cancelButtonColor: '#dc2626',
+        confirmButtonText: 'Sumar',
+        cancelButtonText: 'Cancelar',
+        inputValidator: (value) => {
+            if (!value || parseInt(value) < 1) {
+                return 'Debes ingresar un número válido (mínimo 1)'
+            }
+        }
+    });
+
+    if (quantityStr) {
+        const cantidadToAdd = parseInt(quantityStr, 10);
+        
+        try {
+            Swal.fire({
+                title: 'Procesando...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            const product = allProducts.find(p => p.codigo === codigo);
+            if(!product) throw new Error("Rollo no encontrado en memoria");
+
+            const newStock = product.cantidad + cantidadToAdd;
+
+            const { error: updateError } = await supabaseClient
+                .from('zzzrollos')
+                .update({ cantidad: newStock })
+                .eq('codigo', codigo);
+
+            if (updateError) throw updateError;
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Stock Actualizado',
+                text: `Se agregaron ${cantidadToAdd} unidades a ${codigo}.`,
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+            await fetchProducts();
+        } catch (error) {
+            console.error('Error updating stock:', error);
+            Swal.fire('Error', 'No se pudo actualizar el stock.', 'error');
+        }
+    }
+}
+
+async function editProductPrompt(codigo) {
+    const product = allProducts.find(p => p.codigo === codigo);
+    if (!product) return;
+    
+    const { value: formValues } = await Swal.fire({
+        title: 'Editar Rollo',
+        html: `
+            <div style="display:flex; flex-direction:column; gap:10px; text-align:left;">
+                <label style="font-size:14px; font-weight:bold;">Tipo</label>
+                <input id="swal-input-tipo" class="swal2-input" style="margin:0; width:100%;" placeholder="Tipo" value="${product.tipo || ''}">
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1;"><label style="font-size:14px; font-weight:bold; margin-top:10px;">Ancho</label>
+                    <input id="swal-input-ancho" class="swal2-input" style="margin:0; width:100%;" placeholder="Ancho" value="${product.ancho || ''}"></div>
+                    <div style="flex:1;"><label style="font-size:14px; font-weight:bold; margin-top:10px;">Micrones</label>
+                    <input id="swal-input-mic" class="swal2-input" style="margin:0; width:100%;" placeholder="Micrones" value="${product.mic || ''}"></div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1;"><label style="font-size:14px; font-weight:bold; margin-top:10px;">Largo</label>
+                    <input id="swal-input-largo" class="swal2-input" style="margin:0; width:100%;" placeholder="Largo" value="${product.largo || ''}"></div>
+                    <div style="flex:1;"><label style="font-size:14px; font-weight:bold; margin-top:10px;">Peso</label>
+                    <input id="swal-input-peso" class="swal2-input" style="margin:0; width:100%;" placeholder="Peso" value="${product.peso || ''}"></div>
+                </div>
+            </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        cancelButtonColor: '#dc2626',
+        confirmButtonText: 'Guardar',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            return {
+                tipo: document.getElementById('swal-input-tipo').value.trim(),
+                ancho: document.getElementById('swal-input-ancho').value.trim(),
+                mic: document.getElementById('swal-input-mic').value.trim(),
+                largo: document.getElementById('swal-input-largo').value.trim(),
+                peso: document.getElementById('swal-input-peso').value.trim()
+            }
+        }
+    });
+
+    if (formValues) {
+        try {
+            Swal.fire({
+                title: 'Guardando...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            const { error: updateError } = await supabaseClient
+                .from('zzzrollos')
+                .update({ 
+                    tipo: formValues.tipo,
+                    ancho: formValues.ancho,
+                    mic: formValues.mic,
+                    largo: formValues.largo,
+                    peso: formValues.peso || null
+                })
+                .eq('codigo', codigo);
+
+            if (updateError) throw updateError;
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Guardado',
+                text: 'Detalles del rollo actualizados correctamente.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+            await fetchProducts();
+        } catch (error) {
+            console.error('Error saving details:', error);
+            Swal.fire('Error', 'No se pudieron guardar los cambios.', 'error');
+        }
+    }
+}
+
+function searchMultipleProducts() {
+    const inputs = document.querySelectorAll('.multi-search-input');
+    const tokens = [];
+    
+    inputs.forEach(input => {
+        const val = input.value.trim();
+        if (val) tokens.push(val);
+    });
+
+    if (tokens.length === 0) return;
+
+    // search all products for matches
+    const results = allProducts.filter(p => {
+        return tokens.some(token => {
+            const lowerToken = token.toLowerCase();
+            const nombreCompleto = getRolloName(p).toLowerCase();
+            return p.codigo.toLowerCase() === lowerToken || nombreCompleto.includes(lowerToken);
+        });
+    });
+
+    // render results
+    multiSearchTableBody.innerHTML = '';
+    
+    if (results.length === 0) {
+        multiSearchTableBody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No se encontraron resultados</td></tr>';
+    } else {
+        results.forEach(product => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${product.codigo}</td>
+                <td>${getRolloName(product)}</td>
+                <td><strong>${product.cantidad}</strong></td>
+            `;
+            multiSearchTableBody.appendChild(tr);
+        });
+    }
+
+    multiSearchResults.classList.remove('hidden');
+}
 
 // ==========================================
 // CORE CATALOG FUNCTIONS
@@ -64,7 +247,8 @@ function getRolloName(product) {
 }
 
 function renderProducts() {
-    productsGrid.innerHTML = '';
+    if (!productsTableBody) return;
+    productsTableBody.innerHTML = '';
     
     // Apply filters and search
     let filtered = allProducts;
@@ -83,31 +267,32 @@ function renderProducts() {
 
     if (filtered.length === 0) {
         emptyState.classList.remove('hidden');
+        productsTableBody.parentElement.parentElement.classList.add('hidden');
         return;
     }
     
     emptyState.classList.add('hidden');
+    productsTableBody.parentElement.parentElement.classList.remove('hidden');
 
     filtered.forEach((product, index) => {
-        const card = document.createElement('div');
-        card.className = 'product-card fade-in';
-        card.style.animationDelay = `${index * 0.05}s`;
-
+        const tr = document.createElement('tr');
+        tr.className = 'fade-in';
+        tr.style.animationDelay = `${(index % 10) * 0.02}s`; // Limit animation delay slightly
+        
         const nombre = getRolloName(product);
-        const stockStatusClass = product.cantidad > 20 ? 'high' : (product.cantidad > 0 ? 'low' : 'out');
-        const stockStatusText = product.cantidad > 0 ? `${product.cantidad} disponibles` : 'Sin stock';
-        card.innerHTML = `
-            <span class="product-label">${product.tipo || 'General'}</span>
-            <div class="product-info">
-                <div class="product-title">${nombre}</div>
-                <div class="product-id">Código: ${product.codigo}</div>
-                <div class="product-stock">
-                    <span class="stock-indicator ${stockStatusClass}"></span>
-                    ${stockStatusText}
-                </div>
-            </div>
+        
+        tr.innerHTML = `
+            <td>${product.codigo}</td>
+            <td>${nombre}</td>
+            <td style="font-weight: 600; color: ${product.cantidad > 0 ? (product.cantidad > 20 ? 'inherit' : '#eab308') : '#ef4444'};">
+                ${product.cantidad}
+            </td>
+            <td>
+                <button class="action-btn btn-add" onclick="addStockPrompt('${product.codigo}')" title="Sumar Stock"><i class="fa-solid fa-plus"></i></button>
+                <button class="action-btn btn-edit" onclick="editProductPrompt('${product.codigo}')" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+            </td>
         `;
-        productsGrid.appendChild(card);
+        productsTableBody.appendChild(tr);
     });
 }
 
@@ -371,7 +556,18 @@ async function deactivateProduct() {
 // ==========================================
 
 function setupEventListeners() {
-    searchInput.addEventListener('input', renderProducts);
+    if (searchInput) searchInput.addEventListener('input', renderProducts);
+    if (btnMultiSearch) btnMultiSearch.addEventListener('click', searchMultipleProducts);
+    if (btnAddSearchRow) {
+        btnAddSearchRow.addEventListener('click', () => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="text" class="multi-search-input" list="productList" placeholder="Escribe para autocompletar..." style="width: 100%; background: var(--clr-bg-light); border: 1px solid var(--clr-admin-border); color: white; padding: 0.5rem; border-radius: 4px; outline: none;"></td>
+                <td><button type="button" class="action-btn btn-danger" onclick="this.closest('tr').remove()" style="margin: 0; padding: 0.25rem 0.5rem; color: #ef4444;"><i class="fa-solid fa-trash"></i></button></td>
+            `;
+            multiSearchInputsBody.appendChild(tr);
+        });
+    }
     
     const stockId = document.getElementById('stockId');
     if (stockId) {
@@ -388,18 +584,22 @@ function setupEventListeners() {
         });
     }
 
-    stockForm.addEventListener('submit', processStockUpdate);
-    editIdSearch.addEventListener('change', handleEditSelection);
-    editForm.addEventListener('submit', saveProductDetails);
-    btnDeactivate.addEventListener('click', deactivateProduct);
+    if (stockForm) stockForm.addEventListener('submit', processStockUpdate);
+    if (editIdSearch) editIdSearch.addEventListener('change', handleEditSelection);
+    if (editForm) editForm.addEventListener('submit', saveProductDetails);
+    if (btnDeactivate) btnDeactivate.addEventListener('click', deactivateProduct);
 }
 
 function showLoader() {
-    loader.classList.remove('hidden');
-    productsGrid.classList.add('hidden');
+    if(loader) loader.classList.remove('hidden');
+    if(productsTableBody && productsTableBody.parentElement) {
+        productsTableBody.parentElement.parentElement.classList.add('hidden');
+    }
 }
 
 function hideLoader() {
-    loader.classList.add('hidden');
-    productsGrid.classList.remove('hidden');
+    if(loader) loader.classList.add('hidden');
+    if(productsTableBody && productsTableBody.parentElement) {
+        productsTableBody.parentElement.parentElement.classList.remove('hidden');
+    }
 }
