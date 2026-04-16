@@ -20,8 +20,6 @@
         <div class="header-container">
             <nav class="main-nav">
                 <a href="index.html" class="nav-link"><i class="fa-solid fa-arrow-left"></i> Inicio</a>
-                <a href="#catalog" class="nav-link active">Catálogo de Rollos</a>
-                <a href="#admin_panel" class="nav-link btn-admin">Administrar Rollos</a>
             </nav>
         </div>
     </header>
@@ -39,6 +37,46 @@
 
         <!-- Catalog Section -->
         <section id="catalog" class="catalog-section">
+            <div class="multi-search-section">
+                <h3>Búsqueda Múltiple Rápida</h3>
+                <div class="search-container">
+                    <div class="table-responsive" style="margin-bottom: 0.5rem; box-shadow: none;">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>Código o Nombre a buscar</th>
+                                    <th style="width: 50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="multiSearchInputsBody">
+                                <tr>
+                                    <td><input type="text" class="multi-search-input" list="productList" placeholder="Escribe para autocompletar..." style="width: 100%; background: var(--clr-bg-light); border: 1px solid var(--clr-admin-border); color: white; padding: 0.5rem; border-radius: 4px; outline: none;"></td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <button id="btnAddSearchRow" type="button" style="background: none; border: none; color: var(--clr-primary-500); cursor: pointer; padding: 0.5rem; font-weight: bold; margin-top: 0.25rem;"><i class="fa-solid fa-plus"></i> Agregar otra fila</button>
+                    </div>
+                    <button id="btnMultiSearch" class="btn-primary"><i class="fa-solid fa-search"></i> Buscar rollos</button>
+                </div>
+                <div id="multiSearchResults" class="hidden" style="margin-top: 1.5rem;">
+                    <h4>Resultados de Búsqueda</h4>
+                    <div class="table-responsive">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Detalles (Tipo, Dimensiones)</th>
+                                    <th>Stock actual</th>
+                                </tr>
+                            </thead>
+                            <tbody id="multiSearchTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <div class="section-header">
                 <h3>Catálogo de Rollos</h3>
                 <div class="filters" id="categoryFilters">
@@ -53,8 +91,20 @@
                 <p>Cargando inventario...</p>
             </div>
 
-            <div class="products-grid" id="productsGrid">
-                <!-- Products generated dynamically -->
+            <div class="table-responsive">
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Detalles (Tipo, Dimensiones)</th>
+                            <th>Stock actual</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTableBody">
+                        <!-- Products generated dynamically -->
+                    </tbody>
+                </table>
             </div>
 
             <div id="emptyState" class="empty-state hidden">
@@ -63,8 +113,8 @@
             </div>
         </section>
 
-        <!-- Admin Section -->
-        <section id="admin_panel" class="admin-section">
+        <!-- Admin Section (Hidden/Deprecated) -->
+        <section id="admin_panel" class="admin-section" style="display: none;">
             <div class="admin-header">
             </div>
 
@@ -75,10 +125,12 @@
                         <h4><i class="fa-solid fa-boxes-stacked"></i>Sumar Stock</h4>
                     </div>
                     <form id="stockForm" class="modern-form">
-                        <p class="form-hint">Si el código no existe, se creará el rollo. Si existe, se sumará el stock actual con el ingresado.</p>
+                        <p class="form-hint">Si el código no existe, se creará el rollo. Si existe, se sumará el stock
+                            actual con el ingresado.</p>
 
                         <div class="form-group">
-                            <label for="stockId">Código de Rollo (o Tipo para buscar) <span class="required">*</span></label>
+                            <label for="stockId">Código de Rollo (o Tipo para buscar) <span
+                                    class="required">*</span></label>
                             <input type="text" id="stockId" list="productList" required placeholder="Ej: ROL-001...">
                             <datalist id="productList"></datalist>
                         </div>
@@ -104,7 +156,7 @@
                                 <input type="text" id="stockLargo" required placeholder="Ej: 50m">
                             </div>
                         </div>
-                        
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="stockPeso">Peso</label>
@@ -128,11 +180,13 @@
                         <h4><i class="fa-solid fa-pen-to-square"></i> Editar Detalles del Rollo</h4>
                     </div>
                     <form id="editForm" class="modern-form">
-                        <p class="form-hint">Modifica los detalles del rollo existente. El stock NO puede modificarse aquí.</p>
+                        <p class="form-hint">Modifica los detalles del rollo existente. El stock NO puede modificarse
+                            aquí.</p>
 
                         <div class="form-row">
                             <div class="form-group" style="flex: 2;">
-                                <label for="editIdSearch">Seleccionar Rollo a Editar <span class="required">*</span></label>
+                                <label for="editIdSearch">Seleccionar Rollo a Editar <span
+                                        class="required">*</span></label>
                                 <select id="editIdSearch" required>
                                     <option value="">Seleccione un rollo...</option>
                                     <!-- Options generated dynamically -->
