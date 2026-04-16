@@ -7,8 +7,12 @@ const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 let allProducts = [];
 let currentFilter = 'all';
 
-// DOM Elements
-const productsGrid = document.getElementById('productsGrid');
+const productsTableBody = document.getElementById('productsTableBody');
+const multiSearchInputsBody = document.getElementById('multiSearchInputsBody');
+const btnAddSearchRow = document.getElementById('btnAddSearchRow');
+const btnMultiSearch = document.getElementById('btnMultiSearch');
+const multiSearchResults = document.getElementById('multiSearchResults');
+const multiSearchTableBody = document.getElementById('multiSearchTableBody');
 const loader = document.getElementById('loader');
 const emptyState = document.getElementById('emptyState');
 const categoryFilters = document.getElementById('categoryFilters');
@@ -26,6 +30,172 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchProducts();
     setupEventListeners();
 });
+
+// ==========================================
+// EXCEL-LIKE ACTIONS
+// ==========================================
+
+async function addStockPrompt(id) {
+    const { value: quantityStr } = await Swal.fire({
+        title: `Sumar stock`,
+        text: `Producto: ${id}`,
+        input: 'number',
+        inputLabel: 'Cantidad a sumar',
+        inputPlaceholder: 'Ej: 10',
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        cancelButtonColor: '#dc2626',
+        confirmButtonText: 'Sumar',
+        cancelButtonText: 'Cancelar',
+        inputValidator: (value) => {
+            if (!value || parseInt(value) < 1) {
+                return 'Debes ingresar un número válido (mínimo 1)'
+            }
+        }
+    });
+
+    if (quantityStr) {
+        const cantidadToAdd = parseInt(quantityStr, 10);
+        
+        try {
+            Swal.fire({
+                title: 'Procesando...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            const product = allProducts.find(p => p.id === id);
+            if(!product) throw new Error("Producto no encontrado en memoria");
+
+            const newStock = product.stock_actual + cantidadToAdd;
+
+            const { error: updateError } = await supabaseClient
+                .from('zzzagronomia')
+                .update({ stock_actual: newStock })
+                .eq('id', id);
+
+            if (updateError) throw updateError;
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Stock Actualizado',
+                text: `Se agregaron ${cantidadToAdd} unidades a ${id}.`,
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+            await fetchProducts();
+        } catch (error) {
+            console.error('Error updating stock:', error);
+            Swal.fire('Error', 'No se pudo actualizar el stock.', 'error');
+        }
+    }
+}
+
+async function editProductPrompt(id) {
+    const product = allProducts.find(p => p.id === id);
+    if (!product) return;
+    
+    const { value: formValues } = await Swal.fire({
+        title: 'Editar Producto',
+        html: `
+            <div style="display:flex; flex-direction:column; gap:10px; text-align:left;">
+                <label style="font-size:14px; font-weight:bold;">Nombre</label>
+                <input id="swal-input-nombre" class="swal2-input" style="margin:0; width:100%;" placeholder="Nombre" value="${product.nombre || ''}">
+                <label style="font-size:14px; font-weight:bold; margin-top:10px;">Categoría</label>
+                <input id="swal-input-categoria" class="swal2-input" style="margin:0; width:100%;" placeholder="Categoría" value="${product.categoria || ''}">
+            </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        cancelButtonColor: '#dc2626',
+        confirmButtonText: 'Guardar',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            return {
+                nombre: document.getElementById('swal-input-nombre').value.trim(),
+                categoria: document.getElementById('swal-input-categoria').value.trim()
+            }
+        }
+    });
+
+    if (formValues) {
+        try {
+            Swal.fire({
+                title: 'Guardando...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            const { error: updateError } = await supabaseClient
+                .from('zzzagronomia')
+                .update({ 
+                    nombre: formValues.nombre,
+                    categoria: formValues.categoria
+                })
+                .eq('id', id);
+
+            if (updateError) throw updateError;
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Guardado',
+                text: 'Detalles del producto actualizados correctamente.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+            await fetchProducts();
+        } catch (error) {
+            console.error('Error saving details:', error);
+            Swal.fire('Error', 'No se pudieron guardar los cambios.', 'error');
+        }
+    }
+}
+
+function searchMultipleProducts() {
+    const inputs = document.querySelectorAll('.multi-search-input');
+    const tokens = [];
+    
+    inputs.forEach(input => {
+        const val = input.value.trim();
+        // Since autocomplete fills "ID" we might also be searching IDs instead of tokens
+        if (val) {
+            tokens.push(val);
+        }
+    });
+    
+    if (tokens.length === 0) return;
+
+    // search all products for matches
+    const results = allProducts.filter(p => {
+        return tokens.some(token => {
+            const lowerToken = token.toLowerCase();
+            return p.id.toLowerCase() === lowerToken || (p.nombre && p.nombre.toLowerCase().includes(lowerToken));
+        });
+    });
+
+    // render results
+    multiSearchTableBody.innerHTML = '';
+    
+    if (results.length === 0) {
+        multiSearchTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No se encontraron resultados</td></tr>';
+    } else {
+        results.forEach(product => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${product.id}</td>
+                <td>${product.nombre || 'Producto sin nombre'}</td>
+                <td>${product.categoria || 'General'}</td>
+                <td><strong>${product.stock_actual}</strong></td>
+            `;
+            multiSearchTableBody.appendChild(tr);
+        });
+    }
+
+    multiSearchResults.classList.remove('hidden');
+}
 
 // ==========================================
 // CORE CATALOG FUNCTIONS
@@ -59,7 +229,8 @@ async function fetchProducts() {
 }
 
 function renderProducts() {
-    productsGrid.innerHTML = '';
+    if (!productsTableBody) return;
+    productsTableBody.innerHTML = '';
     
     // Apply filters and search
     let filtered = allProducts;
@@ -78,30 +249,31 @@ function renderProducts() {
 
     if (filtered.length === 0) {
         emptyState.classList.remove('hidden');
+        productsTableBody.parentElement.parentElement.classList.add('hidden');
         return;
     }
     
     emptyState.classList.add('hidden');
+    productsTableBody.parentElement.parentElement.classList.remove('hidden');
 
     filtered.forEach((product, index) => {
-        const card = document.createElement('div');
-        card.className = 'product-card fade-in';
-        card.style.animationDelay = `${index * 0.05}s`;
-
-        const stockStatusClass = product.stock_actual > 20 ? 'high' : (product.stock_actual > 0 ? 'low' : 'out');
-        const stockStatusText = product.stock_actual > 0 ? `${product.stock_actual} disponibles` : 'Sin stock';
-        card.innerHTML = `
-            <span class="product-label">${product.categoria || 'General'}</span>
-            <div class="product-info">
-                <div class="product-title">${product.nombre || 'Producto sin nombre'}</div>
-                <div class="product-id">ID: ${product.id}</div>
-                <div class="product-stock">
-                    <span class="stock-indicator ${stockStatusClass}"></span>
-                    ${stockStatusText}
-                </div>
-            </div>
+        const tr = document.createElement('tr');
+        tr.className = 'fade-in';
+        tr.style.animationDelay = `${(index % 10) * 0.02}s`; // Limit animation delay slightly for performance
+        
+        tr.innerHTML = `
+            <td>${product.id}</td>
+            <td>${product.nombre || 'Producto sin nombre'}</td>
+            <td>${product.categoria || 'General'}</td>
+            <td style="font-weight: 600; color: ${product.stock_actual > 0 ? (product.stock_actual > 20 ? 'inherit' : '#eab308') : '#ef4444'};">
+                ${product.stock_actual}
+            </td>
+            <td>
+                <button class="action-btn btn-add" onclick="addStockPrompt('${product.id}')" title="Sumar Stock"><i class="fa-solid fa-plus"></i></button>
+                <button class="action-btn btn-edit" onclick="editProductPrompt('${product.id}')" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+            </td>
         `;
-        productsGrid.appendChild(card);
+        productsTableBody.appendChild(tr);
     });
 }
 
@@ -354,7 +526,18 @@ async function deactivateProduct() {
 // ==========================================
 
 function setupEventListeners() {
-    searchInput.addEventListener('input', renderProducts);
+    if (searchInput) searchInput.addEventListener('input', renderProducts);
+    if (btnMultiSearch) btnMultiSearch.addEventListener('click', searchMultipleProducts);
+    if (btnAddSearchRow) {
+        btnAddSearchRow.addEventListener('click', () => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="text" class="multi-search-input" list="productList" placeholder="Escribe para autocompletar..." style="width: 100%; background: var(--clr-bg-light); border: 1px solid var(--clr-admin-border); color: white; padding: 0.5rem; border-radius: 4px; outline: none;"></td>
+                <td><button type="button" class="action-btn btn-danger" onclick="this.closest('tr').remove()" style="margin: 0; padding: 0.25rem 0.5rem; color: #ef4444;"><i class="fa-solid fa-trash"></i></button></td>
+            `;
+            multiSearchInputsBody.appendChild(tr);
+        });
+    }
     
     const stockId = document.getElementById('stockId');
     if (stockId) {
@@ -368,18 +551,22 @@ function setupEventListeners() {
         });
     }
 
-    stockForm.addEventListener('submit', processStockUpdate);
-    editIdSearch.addEventListener('change', handleEditSelection);
-    editForm.addEventListener('submit', saveProductDetails);
-    btnDeactivate.addEventListener('click', deactivateProduct);
+    if (stockForm) stockForm.addEventListener('submit', processStockUpdate);
+    if (editIdSearch) editIdSearch.addEventListener('change', handleEditSelection);
+    if (editForm) editForm.addEventListener('submit', saveProductDetails);
+    if (btnDeactivate) btnDeactivate.addEventListener('click', deactivateProduct);
 }
 
 function showLoader() {
-    loader.classList.remove('hidden');
-    productsGrid.classList.add('hidden');
+    if(loader) loader.classList.remove('hidden');
+    if(productsTableBody && productsTableBody.parentElement) {
+        productsTableBody.parentElement.parentElement.classList.add('hidden');
+    }
 }
 
 function hideLoader() {
-    loader.classList.add('hidden');
-    productsGrid.classList.remove('hidden');
+    if(loader) loader.classList.add('hidden');
+    if(productsTableBody && productsTableBody.parentElement) {
+        productsTableBody.parentElement.parentElement.classList.remove('hidden');
+    }
 }
