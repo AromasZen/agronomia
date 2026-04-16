@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Inventario</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SweetAlert2 -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.5/dist/sweetalert2.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header class="app-header">
+        <div class="header-container">
+
+            <nav class="main-nav">
+                <a href="index.html" class="nav-link"><i class="fa-solid fa-arrow-left"></i> Inicio</a>
+                <a href="#catalog" class="nav-link active">Catálogo</a>
+                <a href="#admin_panel" class="nav-link btn-admin">Administrar Productos</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-content">
+
+                <div class="search-bar">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Buscar por nombre o ID...">
+                </div>
+            </div>
+        </section>
+
+        <!-- Catalog Section -->
+        <section id="catalog" class="catalog-section">
+            <div class="section-header">
+                <h3>Catálogo de Productos</h3>
+                <div class="filters" id="categoryFilters">
+                    <!-- Filters generated dynamically -->
+                    <button class="filter-btn active" data-filter="all">Todos</button>
+                </div>
+            </div>
+
+            <!-- Loader -->
+            <div id="loader" class="loader-container">
+                <div class="spinner"></div>
+                <p>Cargando inventario...</p>
+            </div>
+
+            <div class="products-grid" id="productsGrid">
+                <!-- Products generated dynamically -->
+            </div>
+
+            <div id="emptyState" class="empty-state hidden">
+                <i class="fa-solid fa-box-open"></i>
+                <p>No se encontraron productos.</p>
+            </div>
+        </section>
+
+        <!-- Admin Section -->
+        <section id="admin_panel" class="admin-section">
+            <div class="admin-header">
+            </div>
+
+            <div class="admin-forms-container">
+                <!-- ADD / UPDATE STOCK FORM -->
+                <div class="admin-card">
+                    <div class="card-header highlight">
+                        <h4><i class="fa-solid fa-boxes-stacked"></i> Sumar Stock</h4>
+
+                    </div>
+                    <form id="stockForm" class="modern-form">
+                        <p class="form-hint">Si el ID no existe, se creará el producto. Si existe, se sumará el stock
+                            actual con el ingresado.</p>
+
+                        <div class="form-group">
+                            <label for="stockId">ID de Producto (o Nombre para buscar) <span
+                                    class="required">*</span></label>
+                            <input type="text" id="stockId" list="productList" required
+                                placeholder="Ej: FERT-001 o escribe el nombre...">
+                            <datalist id="productList"></datalist>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="stockNombre">Nombre</label>
+                                <input type="text" id="stockNombre" placeholder="Nombre completo del producto">
+                            </div>
+                            <div class="form-group">
+                                <label for="stockCategoria">Categoría</label>
+                                <input type="text" id="stockCategoria" placeholder="Ej: Fertilizantes">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="stockCantidad">Cantidad a sumar <span class="required">*</span></label>
+                                <input type="number" id="stockCantidad" required min="1" placeholder="Ej: 50">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary" id="btnStockUpdate">
+                            <i class="fa-solid fa-plus"></i> Procesar Movimiento
+                        </button>
+                    </form>
+                </div>
+
+                <!-- EDIT PRODUCT DETAILS FORM -->
+                <div class="admin-card">
+                    <div class="card-header">
+                        <h4><i class="fa-solid fa-pen-to-square"></i> Editar Producto</h4>
+                    </div>
+                    <form id="editForm" class="modern-form">
+                        <p class="form-hint">Modifica los detalles del producto existente. El stock NO puede modificarse
+                            aquí.</p>
+
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 2;">
+                                <label for="editIdSearch">Seleccionar Producto a Editar <span
+                                        class="required">*</span></label>
+                                <select id="editIdSearch" required>
+                                    <option value="">Seleccione un producto...</option>
+                                    <!-- Options generated dynamically -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <fieldset id="editFields" disabled class="disabled-fieldset">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="editNombre">Nombre</label>
+                                    <input type="text" id="editNombre" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="editCategoria">Categoría</label>
+                                    <input type="text" id="editCategoria" required>
+                                </div>
+                            </div>
+
+
+
+
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary edit-action">
+                                    <i class="fa-solid fa-save"></i> Guardar Cambios
+                                </button>
+                                <button type="button" class="btn-danger" id="btnDeactivate">
+                                    <i class="fa-solid fa-trash-can"></i> Desactivar Producto
+                                </button>
+                            </div>
+                        </fieldset>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+
+
+    <!-- Supabase App -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SweetAlert2 App -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.5/dist/sweetalert2.all.min.js"></script>
+    <!-- Custom logic -->
+    <script src="script.js"></script>
+</body>
+
+</html>

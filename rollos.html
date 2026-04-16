@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario de Rollos</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SweetAlert2 -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.5/dist/sweetalert2.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header class="app-header">
+        <div class="header-container">
+            <nav class="main-nav">
+                <a href="index.html" class="nav-link"><i class="fa-solid fa-arrow-left"></i> Inicio</a>
+                <a href="#catalog" class="nav-link active">Catálogo de Rollos</a>
+                <a href="#admin_panel" class="nav-link btn-admin">Administrar Rollos</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-content">
+                <div class="search-bar">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Buscar por código, tipo, ancho...">
+                </div>
+            </div>
+        </section>
+
+        <!-- Catalog Section -->
+        <section id="catalog" class="catalog-section">
+            <div class="section-header">
+                <h3>Catálogo de Rollos</h3>
+                <div class="filters" id="categoryFilters">
+                    <!-- Filters generated dynamically by "tipo" -->
+                    <button class="filter-btn active" data-filter="all">Todos</button>
+                </div>
+            </div>
+
+            <!-- Loader -->
+            <div id="loader" class="loader-container">
+                <div class="spinner"></div>
+                <p>Cargando inventario...</p>
+            </div>
+
+            <div class="products-grid" id="productsGrid">
+                <!-- Products generated dynamically -->
+            </div>
+
+            <div id="emptyState" class="empty-state hidden">
+                <i class="fa-solid fa-box-open"></i>
+                <p>No se encontraron rollos.</p>
+            </div>
+        </section>
+
+        <!-- Admin Section -->
+        <section id="admin_panel" class="admin-section">
+            <div class="admin-header">
+            </div>
+
+            <div class="admin-forms-container">
+                <!-- ADD / UPDATE STOCK FORM -->
+                <div class="admin-card">
+                    <div class="card-header highlight">
+                        <h4><i class="fa-solid fa-boxes-stacked"></i>Sumar Stock</h4>
+                    </div>
+                    <form id="stockForm" class="modern-form">
+                        <p class="form-hint">Si el código no existe, se creará el rollo. Si existe, se sumará el stock actual con el ingresado.</p>
+
+                        <div class="form-group">
+                            <label for="stockId">Código de Rollo (o Tipo para buscar) <span class="required">*</span></label>
+                            <input type="text" id="stockId" list="productList" required placeholder="Ej: ROL-001...">
+                            <datalist id="productList"></datalist>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="stockTipo">Tipo <span class="required">*</span></label>
+                                <input type="text" id="stockTipo" required placeholder="Ej: Cristal, Negro, etc.">
+                            </div>
+                            <div class="form-group">
+                                <label for="stockAncho">Ancho <span class="required">*</span></label>
+                                <input type="text" id="stockAncho" required placeholder="Ej: 2m">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="stockMic">Micrones (Mic) <span class="required">*</span></label>
+                                <input type="text" id="stockMic" required placeholder="Ej: 100">
+                            </div>
+                            <div class="form-group">
+                                <label for="stockLargo">Largo <span class="required">*</span></label>
+                                <input type="text" id="stockLargo" required placeholder="Ej: 50m">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="stockPeso">Peso</label>
+                                <input type="text" id="stockPeso" placeholder="Ej: 20kg">
+                            </div>
+                            <div class="form-group">
+                                <label for="stockCantidad">Cantidad a sumar <span class="required">*</span></label>
+                                <input type="number" id="stockCantidad" required min="1" placeholder="Ej: 10">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary" id="btnStockUpdate">
+                            <i class="fa-solid fa-plus"></i> Procesar Movimiento
+                        </button>
+                    </form>
+                </div>
+
+                <!-- EDIT PRODUCT DETAILS FORM -->
+                <div class="admin-card">
+                    <div class="card-header">
+                        <h4><i class="fa-solid fa-pen-to-square"></i> Editar Detalles del Rollo</h4>
+                    </div>
+                    <form id="editForm" class="modern-form">
+                        <p class="form-hint">Modifica los detalles del rollo existente. El stock NO puede modificarse aquí.</p>
+
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 2;">
+                                <label for="editIdSearch">Seleccionar Rollo a Editar <span class="required">*</span></label>
+                                <select id="editIdSearch" required>
+                                    <option value="">Seleccione un rollo...</option>
+                                    <!-- Options generated dynamically -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <fieldset id="editFields" disabled class="disabled-fieldset">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="editTipo">Tipo</label>
+                                    <input type="text" id="editTipo" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="editAncho">Ancho</label>
+                                    <input type="text" id="editAncho" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="editMic">Micrones</label>
+                                    <input type="text" id="editMic" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="editLargo">Largo</label>
+                                    <input type="text" id="editLargo" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="editPeso">Peso</label>
+                                    <input type="text" id="editPeso">
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary edit-action">
+                                    <i class="fa-solid fa-save"></i> Guardar Cambios
+                                </button>
+                                <button type="button" class="btn-danger" id="btnDeactivate">
+                                    <i class="fa-solid fa-trash-can"></i> Desactivar Rollo
+                                </button>
+                            </div>
+                        </fieldset>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Supabase App -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SweetAlert2 App -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.5/dist/sweetalert2.all.min.js"></script>
+    <!-- Custom logic -->
+    <script src="rollos.js"></script>
+</body>
+
+</html>
