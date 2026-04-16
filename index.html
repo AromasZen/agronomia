@@ -42,10 +42,23 @@
             text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
 
+        @media (max-width: 600px) {
+            .portal-title {
+                font-size: 2rem;
+                margin-bottom: 2rem;
+            }
+            .portal-container {
+                padding: 1.5rem;
+            }
+            .portal-card {
+                padding: 2rem 1.5rem;
+            }
+        }
+
         .portal-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.5rem;
         }
 
         .portal-card {
